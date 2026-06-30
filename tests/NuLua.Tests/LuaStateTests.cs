@@ -2,6 +2,8 @@ namespace NuLua.Tests;
 
 public class LuaStateTests
 {
+    readonly record struct UserDataExample(int Foo, double Bar);
+
     readonly record struct ValueContainingReference(string Value);
 
     static int CountCachedStates(LuaStateCase lua)
@@ -454,6 +456,23 @@ public class LuaStateTests
 
             await Assert.That(userValues[1].Read<string>()).IsEqualTo("payload");
         }
+    }
+
+    [Test]
+    [MethodDataSource(typeof(LuaStateCases), nameof(LuaStateCases.All))]
+    public async Task GenericCreateUserDataInitializesUnmanagedValue(LuaStateCase lua)
+    {
+        using var state = lua.CreateState();
+        var expected = new UserDataExample(5, 1.5);
+        using var userData = state.CreateUserData(expected);
+
+        await Assert.That(userData.Read<UserDataExample>()).IsEqualTo(expected);
+
+        state["example"] = userData;
+        var value = state["example"];
+
+        await Assert.That(value.Type).IsEqualTo(LuaValueType.UserData);
+        await Assert.That(value.Read<UserDataExample>()).IsEqualTo(expected);
     }
 
     [Test]
