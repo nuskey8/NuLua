@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.CompilerServices;
 using NuLua.Internal;
 
 namespace NuLua;
@@ -293,6 +294,24 @@ public static class LuaStateExtensions
     {
         state.NewUserData(size, userValueCount);
         return new LuaUserData(state, state.Ref());
+    }
+
+    public static LuaUserData CreateUserData<T>(this ILuaState state)
+        where T : unmanaged
+    {
+        return state.CreateUserData(Unsafe.SizeOf<T>());
+    }
+
+    public static LuaUserData CreateUserData<T>(
+        this ILuaState state,
+        in T value,
+        int userValueCount = 1
+    )
+        where T : unmanaged
+    {
+        var userData = state.CreateUserData(Unsafe.SizeOf<T>(), userValueCount);
+        userData.UnsafeWrite(value);
+        return userData;
     }
 
     public static LuaFunction CreateFunction<TState>(
