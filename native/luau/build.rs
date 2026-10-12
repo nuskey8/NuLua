@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+mod feature_flags;
+
 const FLAVOR: &str = "luau";
 const CSHARP_NAMESPACE: &str = "NuLua.Interop.Luau";
 const CSHARP_CLASS: &str = "NativeMethods";
@@ -37,6 +39,7 @@ fn main() {
         .join(format!("{CSHARP_CLASS}.g.cs"));
     let ffi_rs = out_dir.join(format!("{FLAVOR}_ffi.rs"));
     generate_csharp_bindings(&bindings_rs, &ffi_rs, &cs_out);
+    feature_flags::generate(&workspace_root);
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", vm_include.display());
