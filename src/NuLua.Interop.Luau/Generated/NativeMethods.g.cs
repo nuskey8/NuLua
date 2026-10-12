@@ -747,6 +747,18 @@ namespace NuLua.Interop.Luau
         [DllImport(__DllName, EntryPoint = "luau_free", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern void luau_free(void* p);
 
+        [DllImport(__DllName, EntryPoint = "luau_setbooleanflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_setbooleanflag(byte* name, int enabled);
+
+        [DllImport(__DllName, EntryPoint = "luau_getbooleanflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_getbooleanflag(byte* name, int* enabled);
+
+        [DllImport(__DllName, EntryPoint = "luau_setintegerflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_setintegerflag(byte* name, int value);
+
+        [DllImport(__DllName, EntryPoint = "luau_getintegerflag", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_getintegerflag(byte* name, int* value);
+
         [DllImport(__DllName, EntryPoint = "luau_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int luau_error(void* L, byte* msg);
 

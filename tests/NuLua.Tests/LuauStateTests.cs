@@ -6,6 +6,41 @@ namespace NuLua.Tests;
 public class LuauStateTests
 {
     [Test]
+    public async Task ConstBindingsAndFunctionsCanBeExecuted()
+    {
+        using var state = LuauState.Create();
+        var results = state.DoString(
+            """
+            const answer: number = 42
+            const function getAnswer() return answer end
+            local const = 10
+            return getAnswer(), const
+            """
+        );
+
+        await Assert.That(results[0].Read<double>()).IsEqualTo(42);
+        await Assert.That(results[1].Read<double>()).IsEqualTo(10);
+    }
+
+    [Test]
+    public async Task StandaloneCompilerSupportsConstAndRejectsReassignment()
+    {
+        var bytecode = LuauCompiler.Compile("const answer = 42; return answer"u8);
+        using var state = LuauState.Create();
+        state.LoadBuffer(bytecode, "const-test");
+        state.Call(0, 1);
+        await Assert.That(state.ToNumber(-1)).IsEqualTo(42);
+
+        // Compile errors are encoded with a zero byte followed by the diagnostic.
+        // Check that directly without relying on LoadBuffer's error handling.
+        var invalid = LuauCompiler.Compile("const answer = 42; answer = 0"u8);
+        await Assert.That(invalid[0]).IsEqualTo((byte)0);
+        await Assert
+            .That(System.Text.Encoding.UTF8.GetString(invalid.AsSpan(1)))
+            .Contains("Assigned expression must be a variable or a field");
+    }
+
+    [Test]
     public async Task PushVectorAndToVectorRoundTripsComponents()
     {
         using var state = LuauState.Create();

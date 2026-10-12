@@ -16,6 +16,13 @@ extern "C" {
 // not share a CRT with the dylib (notably on Windows).
 LUAU_SHIM_API void luau_free(void* p);
 
+// Sets a process-wide boolean feature flag. Returns 1 if found, otherwise 0.
+// Configure flags before using the compiler or VM; concurrent access is unsafe.
+LUAU_SHIM_API int luau_setbooleanflag(const char* name, int enabled);
+LUAU_SHIM_API int luau_getbooleanflag(const char* name, int* enabled);
+LUAU_SHIM_API int luau_setintegerflag(const char* name, int value);
+LUAU_SHIM_API int luau_getintegerflag(const char* name, int* value);
+
 // Pushes the given NUL-terminated message and raises a Lua error. Mirrors
 // the common `lua_pushstring(L, msg); lua_error(L);` idiom. We accept the
 // lua_State as an opaque void* to keep this header free of Lua includes.

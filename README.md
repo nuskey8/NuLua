@@ -497,6 +497,19 @@ state.OpenBufferLibrary();
 state.OpenVectorLibrary();
 ```
 
+### Feature flags
+
+Luau provides several feature flags. To enable them, configure `LuauFeatureFlags` when the application starts.
+
+```cs
+LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauConst2, true);
+LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauExportValueSyntax, true);
+LuauFeatureFlags.SetInteger(LuauFeatureFlags.LuauRecursionLimit, 1000);
+
+bool constEnabled = LuauFeatureFlags.GetBoolean(LuauFeatureFlags.LuauConst2);
+int recursionLimit = LuauFeatureFlags.GetInteger(LuauFeatureFlags.LuauRecursionLimit);
+```
+
 ### LuauBuffer
 
 Luau's `buffer` type is represented by `LuauBuffer`.

@@ -37,6 +37,13 @@ public unsafe struct CString : IDisposable
         return new ReadOnlySpan<byte>(ptr, byteCount);
     }
 
+    public override readonly string ToString()
+    {
+        if (ptr == null)
+            return string.Empty;
+        return Encoding.UTF8.GetString(ptr, byteCount);
+    }
+
     public void Dispose()
     {
         if (ptr != null)
