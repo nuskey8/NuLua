@@ -502,11 +502,10 @@ state.OpenVectorLibrary();
 LuauにはいくつかのFeature Flagsが用意されています。これを有効化するには、アプリケーションの起動時に`LuauFeatureFlags`を設定してください。
 
 ```cs
-LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauConst2, true);
 LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauExportValueSyntax, true);
 LuauFeatureFlags.SetInteger(LuauFeatureFlags.LuauRecursionLimit, 1000);
 
-bool constEnabled = LuauFeatureFlags.GetBoolean(LuauFeatureFlags.LuauConst2);
+bool exportEnabled = LuauFeatureFlags.GetBoolean(LuauFeatureFlags.LuauExportValueSyntax);
 int recursionLimit = LuauFeatureFlags.GetInteger(LuauFeatureFlags.LuauRecursionLimit);
 ```
 
