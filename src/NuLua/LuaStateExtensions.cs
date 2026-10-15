@@ -38,7 +38,7 @@ public static class LuaStateExtensions
 
     public static void PushString(this ILuaState state, ReadOnlySpan<char> str)
     {
-        using var strBytes = new CString(str);
+        using var strBytes = CString.CreateUnchecked(str);
         state.PushString(strBytes.AsSpan());
     }
 

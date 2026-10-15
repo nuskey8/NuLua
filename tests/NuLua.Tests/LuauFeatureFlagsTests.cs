@@ -36,11 +36,11 @@ public class LuauFeatureFlagsTests
     [Test]
     public async Task InvalidNamesThrow()
     {
-        await Assert.That(() => LuauFeatureFlags.GetBoolean([])).Throws<ArgumentException>();
+        await Assert.That(() => LuauFeatureFlags.GetBoolean([])).Throws<NotSupportedException>();
         await Assert
             .That(() => LuauFeatureFlags.SetBoolean("LuauConst2\0ignored"u8, true))
             .Throws<ArgumentException>();
-        await Assert.That(() => LuauFeatureFlags.GetInteger([])).Throws<ArgumentException>();
+        await Assert.That(() => LuauFeatureFlags.GetInteger([])).Throws<NotSupportedException>();
         await Assert
             .That(() => LuauFeatureFlags.SetInteger("LuauRecursionLimit\0ignored"u8, 1))
             .Throws<ArgumentException>();
