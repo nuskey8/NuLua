@@ -566,6 +566,7 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
         pendingAsyncTask = default;
     }
 }
+{{~ if name != "Luau" ~}}
 
 internal static class {{ name }}AsyncDriver
 {
@@ -604,3 +605,4 @@ internal static class {{ name }}AsyncDriver
         }
     }
 }
+{{~ end ~}}
