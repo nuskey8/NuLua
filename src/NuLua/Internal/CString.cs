@@ -49,7 +49,8 @@ public unsafe struct CString : IDisposable
 
     public readonly ReadOnlySpan<byte> AsSpan()
     {
-        if (ptr == null) return [];
+        if (ptr == null)
+            return [];
         return new ReadOnlySpan<byte>(ptr, byteCount);
     }
 

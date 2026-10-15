@@ -61,5 +61,4 @@
     <MakeDir Directories="$(CodeGenOutputDir)" />
     <Exec Command="dotnet run --project &quot;$(CodeGenProject)&quot; --configuration $(Configuration) --no-build -- --name $(CodeGenName) --version $(CodeGenVersion) --common-template-dir &quot;$(CodeGenCommonTemplateDir)&quot; --dialect-template-dir &quot;$(CodeGenTemplateDir)&quot; --output-dir &quot;$(CodeGenOutputDir)&quot; --is-jit" />
   </Target>
-
 </Project>

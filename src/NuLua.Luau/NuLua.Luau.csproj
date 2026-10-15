@@ -58,5 +58,4 @@
     <MakeDir Directories="$(CodeGenOutputDir)" />
     <Exec Command="dotnet run --project &quot;$(CodeGenProject)&quot; --configuration $(Configuration) --no-build -- --name $(CodeGenName) --version $(CodeGenVersion) --common-template-dir &quot;$(CodeGenCommonTemplateDir)&quot; --output-dir &quot;$(CodeGenOutputDir)&quot; --exclude-templates State.Debug" />
   </Target>
-
 </Project>
