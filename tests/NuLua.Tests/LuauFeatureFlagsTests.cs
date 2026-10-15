@@ -3,15 +3,6 @@ using BindingFlags = System.Reflection.BindingFlags;
 
 namespace NuLua.Tests;
 
-public class LuauFeatureFlagHooks
-{
-    [Before(Assembly)]
-    public static void EnableConst()
-    {
-        LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauConst2, true);
-    }
-}
-
 public class LuauFeatureFlagsTests
 {
     delegate ReadOnlySpan<byte> FlagNameGetter();
@@ -92,7 +83,11 @@ public class LuauFeatureFlagsTests
     [Test]
     public async Task CustomUtf8NameCanBePassed()
     {
-        await Assert.That(LuauFeatureFlags.GetBoolean("LuauConst2"u8)).IsTrue();
-        await Assert.That(LuauFeatureFlags.LuauConst2.SequenceEqual("LuauConst2"u8)).IsTrue();
+        await Assert
+            .That(LuauFeatureFlags.GetBoolean("DebugLuauNoInline"u8))
+            .IsEqualTo(LuauFeatureFlags.GetBoolean(LuauFeatureFlags.DebugLuauNoInline));
+        await Assert
+            .That(LuauFeatureFlags.DebugLuauNoInline.SequenceEqual("DebugLuauNoInline"u8))
+            .IsTrue();
     }
 }

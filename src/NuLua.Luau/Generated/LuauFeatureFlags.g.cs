@@ -6,6 +6,8 @@ public static unsafe partial class LuauFeatureFlags
 {
     public static ReadOnlySpan<byte> DebugLuauNoInline => "DebugLuauNoInline"u8;
 
+    public static ReadOnlySpan<byte> DebugLuauParseExactTables => "DebugLuauParseExactTables"u8;
+
     public static ReadOnlySpan<byte> DebugLuauReportReturnTypeVariadicWithTypeSuffix => "DebugLuauReportReturnTypeVariadicWithTypeSuffix"u8;
 
     public static ReadOnlySpan<byte> DebugLuauTimeTracing => "DebugLuauTimeTracing"u8;
@@ -18,51 +20,67 @@ public static unsafe partial class LuauFeatureFlags
 
     public static ReadOnlySpan<byte> LuauAllowGlobalDeclarationToBeCalledClass => "LuauAllowGlobalDeclarationToBeCalledClass"u8;
 
-    public static ReadOnlySpan<byte> LuauAutoStack => "LuauAutoStack"u8;
+    public static ReadOnlySpan<byte> LuauBackedgeHeapCheck => "LuauBackedgeHeapCheck"u8;
 
-    public static ReadOnlySpan<byte> LuauCallFeedback => "LuauCallFeedback"u8;
+    public static ReadOnlySpan<byte> LuauBufferCage => "LuauBufferCage"u8;
 
-    public static ReadOnlySpan<byte> LuauCloneTableFix => "LuauCloneTableFix"u8;
+    public static ReadOnlySpan<byte> LuauBytecodeCostModel => "LuauBytecodeCostModel"u8;
 
-    public static ReadOnlySpan<byte> LuauClosureUsageCounter => "LuauClosureUsageCounter"u8;
+    public static ReadOnlySpan<byte> LuauCallLuauTm => "LuauCallLuauTm"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileDuptableConstantPack2 => "LuauCompileDuptableConstantPack2"u8;
+    public static ReadOnlySpan<byte> LuauCompileCallFbRemap => "LuauCompileCallFbRemap"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileFastcall3CostModel => "LuauCompileFastcall3CostModel"u8;
+    public static ReadOnlySpan<byte> LuauCompileCleanBlockDeadClose => "LuauCompileCleanBlockDeadClose"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileFoldOptimize => "LuauCompileFoldOptimize"u8;
+    public static ReadOnlySpan<byte> LuauCompileConcatTargetTop => "LuauCompileConcatTargetTop"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileInlineTableFunctions => "LuauCompileInlineTableFunctions"u8;
+    public static ReadOnlySpan<byte> LuauCompileEmitVectorDouble => "LuauCompileEmitVectorDouble"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileNewTableMutationTracker => "LuauCompileNewTableMutationTracker"u8;
+    public static ReadOnlySpan<byte> LuauCompileFastpcall => "LuauCompileFastpcall"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileNoOptNext => "LuauCompileNoOptNext"u8;
+    public static ReadOnlySpan<byte> LuauCompileLoopUnrollZero => "LuauCompileLoopUnrollZero"u8;
 
-    public static ReadOnlySpan<byte> LuauCompilePropagateTableProps2 => "LuauCompilePropagateTableProps2"u8;
+    public static ReadOnlySpan<byte> LuauCompileMoveElision => "LuauCompileMoveElision"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileStringInterpTargetTop => "LuauCompileStringInterpTargetTop"u8;
+    public static ReadOnlySpan<byte> LuauCompileMoveElisionFix => "LuauCompileMoveElisionFix"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileTypeAliases => "LuauCompileTypeAliases"u8;
+    public static ReadOnlySpan<byte> LuauCompileNoFoldVectorEqW => "LuauCompileNoFoldVectorEqW"u8;
 
-    public static ReadOnlySpan<byte> LuauCompileUdataDirect => "LuauCompileUdataDirect"u8;
+    public static ReadOnlySpan<byte> LuauCompileRecursiveAliases => "LuauCompileRecursiveAliases"u8;
 
-    public static ReadOnlySpan<byte> LuauConst2 => "LuauConst2"u8;
+    public static ReadOnlySpan<byte> LuauCompileRefactorFeedback => "LuauCompileRefactorFeedback"u8;
 
-    public static ReadOnlySpan<byte> LuauConstJustReportErrorForUnderfill => "LuauConstJustReportErrorForUnderfill"u8;
+    public static ReadOnlySpan<byte> LuauCompileReuseLocalRegs => "LuauCompileReuseLocalRegs"u8;
 
-    public static ReadOnlySpan<byte> LuauCstExprGroup => "LuauCstExprGroup"u8;
+    public static ReadOnlySpan<byte> LuauCompileTableFoldFix => "LuauCompileTableFoldFix"u8;
 
-    public static ReadOnlySpan<byte> LuauCstTypeGroup => "LuauCstTypeGroup"u8;
+    public static ReadOnlySpan<byte> LuauCompileUndoEmitAdjust => "LuauCompileUndoEmitAdjust"u8;
 
-    public static ReadOnlySpan<byte> LuauCustomYieldablePcalls => "LuauCustomYieldablePcalls"u8;
+    public static ReadOnlySpan<byte> LuauCoroutineFinally => "LuauCoroutineFinally"u8;
 
-    public static ReadOnlySpan<byte> LuauDirectFieldGet => "LuauDirectFieldGet"u8;
+    public static ReadOnlySpan<byte> LuauCostModel => "LuauCostModel"u8;
+
+    public static ReadOnlySpan<byte> LuauEasyStateInit => "LuauEasyStateInit"u8;
 
     public static ReadOnlySpan<byte> LuauEmitCallFeedback => "LuauEmitCallFeedback"u8;
 
-    public static ReadOnlySpan<byte> LuauErrorTolerantPrettyPrinting => "LuauErrorTolerantPrettyPrinting"u8;
+    public static ReadOnlySpan<byte> LuauEnumMoreEdges => "LuauEnumMoreEdges"u8;
+
+    public static ReadOnlySpan<byte> LuauExperimentalIfLocalSyntax => "LuauExperimentalIfLocalSyntax"u8;
 
     public static ReadOnlySpan<byte> LuauExportValueSyntax => "LuauExportValueSyntax"u8;
+
+    public static ReadOnlySpan<byte> LuauExportedTypesParticipateInScc => "LuauExportedTypesParticipateInScc"u8;
+
+    public static ReadOnlySpan<byte> LuauFastpcall => "LuauFastpcall"u8;
+
+    public static ReadOnlySpan<byte> LuauFastpcallInterrupt => "LuauFastpcallInterrupt"u8;
+
+    public static ReadOnlySpan<byte> LuauFrozenMetaButterfly => "LuauFrozenMetaButterfly"u8;
+
+    public static ReadOnlySpan<byte> LuauGcHeapShrinkFix => "LuauGcHeapShrinkFix"u8;
+
+    public static ReadOnlySpan<byte> LuauGcTraceUdata => "LuauGcTraceUdata"u8;
 
     public static ReadOnlySpan<byte> LuauIntegerBufferFastcalls => "LuauIntegerBufferFastcalls"u8;
 
@@ -72,17 +90,37 @@ public static unsafe partial class LuauFeatureFlags
 
     public static ReadOnlySpan<byte> LuauIntegerType2 => "LuauIntegerType2"u8;
 
-    public static ReadOnlySpan<byte> LuauResumeRestoreCcalls => "LuauResumeRestoreCcalls"u8;
+    public static ReadOnlySpan<byte> LuauLoadRemapOptionalUserdata => "LuauLoadRemapOptionalUserdata"u8;
+
+    public static ReadOnlySpan<byte> LuauNewPointerEncode => "LuauNewPointerEncode"u8;
+
+    public static ReadOnlySpan<byte> LuauOptimizeExportTable => "LuauOptimizeExportTable"u8;
+
+    public static ReadOnlySpan<byte> LuauOptimizeStringGsub => "LuauOptimizeStringGsub"u8;
+
+    public static ReadOnlySpan<byte> LuauOptimizeStringSplit => "LuauOptimizeStringSplit"u8;
+
+    public static ReadOnlySpan<byte> LuauPcallErrorContinuationReentry => "LuauPcallErrorContinuationReentry"u8;
+
+    public static ReadOnlySpan<byte> LuauPcallOptimize => "LuauPcallOptimize"u8;
+
+    public static ReadOnlySpan<byte> LuauPromoteProto => "LuauPromoteProto"u8;
+
+    public static ReadOnlySpan<byte> LuauSandboxFreezesVectorMetatable => "LuauSandboxFreezesVectorMetatable"u8;
+
+    public static ReadOnlySpan<byte> LuauSingleTypeOptionalPackReturnsAttributeParens => "LuauSingleTypeOptionalPackReturnsAttributeParens"u8;
 
     public static ReadOnlySpan<byte> LuauSolverV2 => "LuauSolverV2"u8;
 
-    public static ReadOnlySpan<byte> LuauTableEntriesDontNeedToMatchIndent => "LuauTableEntriesDontNeedToMatchIndent"u8;
+    public static ReadOnlySpan<byte> LuauSplitTableLookups => "LuauSplitTableLookups"u8;
 
-    public static ReadOnlySpan<byte> LuauUdataDirectAccess6 => "LuauUdataDirectAccess6"u8;
+    public static ReadOnlySpan<byte> LuauTableArrayAdjustCheck => "LuauTableArrayAdjustCheck"u8;
 
-    public static ReadOnlySpan<byte> LuauUdataMetatablePinned => "LuauUdataMetatablePinned"u8;
+    public static ReadOnlySpan<byte> LuauTableArrayShrinkOrder => "LuauTableArrayShrinkOrder"u8;
 
-    public static ReadOnlySpan<byte> LuauYieldIter2 => "LuauYieldIter2"u8;
+    public static ReadOnlySpan<byte> LuauTableMoveTimeoutFix => "LuauTableMoveTimeoutFix"u8;
+
+    public static ReadOnlySpan<byte> LuauTableRobustOom => "LuauTableRobustOom"u8;
 
     public static ReadOnlySpan<byte> LuauCompileInlineDepth => "LuauCompileInlineDepth"u8;
 
