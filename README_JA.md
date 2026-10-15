@@ -499,7 +499,7 @@ state.OpenVectorLibrary();
 
 ### LuauFeatureFlags
 
-LuauにはいくつかのFeature Flagsが用意されています。これを有効化するには、アプリケーションの起動時に`LuauFeatureFlags`を設定してください。Luau 0.742では`const`宣言は標準で有効なため、機能フラグの設定は不要です。
+LuauにはいくつかのFeature Flagsが用意されています。これを有効化するには、アプリケーションの起動時に`LuauFeatureFlags`を設定してください。
 
 ```cs
 LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauExportValueSyntax, true);

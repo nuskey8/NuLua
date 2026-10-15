@@ -499,8 +499,7 @@ state.OpenVectorLibrary();
 
 ### Feature flags
 
-Luau provides several feature flags. To enable them, configure `LuauFeatureFlags` when the application starts. In Luau 0.742, `const` declarations are enabled by default and do not require a feature flag.
-
+Luau provides several feature flags. To enable them, configure `LuauFeatureFlags` when the application starts.
 ```cs
 LuauFeatureFlags.SetBoolean(LuauFeatureFlags.LuauExportValueSyntax, true);
 LuauFeatureFlags.SetInteger(LuauFeatureFlags.LuauRecursionLimit, 1000);
