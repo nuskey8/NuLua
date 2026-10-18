@@ -3,6 +3,7 @@
 #nullable enable
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using NuLua.Internal;
 using NuLua.Interop.Lua54;
 
@@ -242,7 +243,7 @@ public sealed unsafe partial class Lua54State
         var p = ar->short_src;
         int n = 0;
         while (n < 60 && p[n] != 0) n++;
-        return new string((sbyte*)p, 0, n);
+        return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(p, n));
     }
 
     static string? Utf8NullTerminated(byte* p)
@@ -250,6 +251,6 @@ public sealed unsafe partial class Lua54State
         if (p == null) return null;
         int n = 0;
         while (p[n] != 0) n++;
-        return new string((sbyte*)p, 0, n);
+        return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(p, n));
     }
 }

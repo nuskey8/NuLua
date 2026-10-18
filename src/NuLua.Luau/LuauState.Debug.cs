@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 using NuLua.Interop.Luau;
 
 namespace NuLua.Luau;
@@ -276,7 +277,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
         int n = 0;
         while (p[n] != 0)
             n++;
-        return new string((sbyte*)p, 0, n);
+        return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(p, n));
     }
 }
 

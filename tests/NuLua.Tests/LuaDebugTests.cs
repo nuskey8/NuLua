@@ -8,6 +8,29 @@ public class LuaDebugTests
 {
     [Test]
     [MethodDataSource(typeof(LuaStateCases), nameof(LuaStateCases.All))]
+    public async Task StackSourcePreservesUtf8(LuaStateCase lua)
+    {
+        using var state = lua.CreateState();
+        const string chunkName = "@こんにちは.lua";
+        LuaDebugInfo? captured = null;
+        using var probe = state.CreateProbeFunction(s =>
+        {
+            if (s.Debug.TryGetStackInfo(1, LuaDebugInfoFields.Source, out var info))
+            {
+                captured = info;
+            }
+        });
+        state["probe"] = probe;
+        state.LoadDebuggable("probe()", chunkName);
+        state.Call(0, 0);
+
+        await Assert.That(captured).IsNotNull();
+        await Assert.That(captured!.Value.Source).IsEqualTo(chunkName);
+        await Assert.That(captured.Value.ShortSource).Contains("こんにちは.lua");
+    }
+
+    [Test]
+    [MethodDataSource(typeof(LuaStateCases), nameof(LuaStateCases.All))]
     public async Task GetUpvalueRetrievesClosureUpvalue(LuaStateCase lua)
     {
         using var state = lua.CreateState();
