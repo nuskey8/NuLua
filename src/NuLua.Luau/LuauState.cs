@@ -37,22 +37,38 @@ public sealed unsafe partial class LuauState
     public static LuauState CreateSandbox()
     {
         var state = Create();
-        NativeMethods.luaL_sandbox(state.ptr);
+        state.Sandbox();
         return state;
+    }
+
+    /// <summary>
+    /// Freezes this VM's shared globals and libraries after host initialization.
+    /// Run scripts in <see cref="CreateSandboxThread"/> to give each worker writable,
+    /// isolated globals. This operation is permanent and may only be called on the main state.
+    /// Existing threads and loaded chunks are not isolated retroactively.
+    /// </summary>
+    public void Sandbox()
+    {
+        CheckDisposed();
+        if (NativeMethods.lua_mainthread(ptr) != ptr)
+        {
+            throw new InvalidOperationException("Only the main state can freeze shared globals.");
+        }
+        MemoryOperation(MemoryOp.Sandbox);
     }
 
     public void NewSandboxThread()
     {
         NewThread();
         var thread = ToThread(-1);
-        NativeMethods.luaL_sandboxthread(thread.ptr);
+        thread.MemoryOperation(MemoryOp.SandboxThread);
     }
 
     public LuauState CreateSandboxThread()
     {
         NewThread();
         var thread = ToThread(-1);
-        NativeMethods.luaL_sandboxthread(thread.ptr);
+        thread.MemoryOperation(MemoryOp.SandboxThread);
         return thread;
     }
 
@@ -68,6 +84,7 @@ public sealed unsafe partial class LuauState
 
     void CheckResult(int code)
     {
+        ThrowPendingInterrupt();
         if (code is not LUA_OK and not LUA_YIELD)
         {
             nuint len;
@@ -81,13 +98,15 @@ public sealed unsafe partial class LuauState
     public void OpenLibraries()
     {
         CheckDisposed();
-        NativeMethods.luaL_openlibs(ptr);
+        MemoryOperation(MemoryOp.OpenLibraries);
     }
 
     void OpenSingleLibrary(NativeMethods.lua_pushcclosurek_fn__delegate opener)
     {
-        NativeMethods.lua_pushcclosurek(ptr, opener, null, 0, null!);
-        NativeMethods.lua_call(ptr, 0, 0);
+        MemoryOperation(
+            MemoryOp.OpenLibrary,
+            data: (void*)Marshal.GetFunctionPointerForDelegate(opener)
+        );
     }
 
     public void OpenBaseLibrary()
@@ -209,7 +228,7 @@ public sealed unsafe partial class LuauState
         }
         try
         {
-            var result = NativeMethods.luau_load(ptr, chunkName.Pointer, bytecode, bytecodeSize, 0);
+            var result = ProtectedLoad(chunkName.Pointer, bytecode, bytecodeSize);
             CheckResult(result);
         }
         finally
@@ -235,13 +254,7 @@ public sealed unsafe partial class LuauState
         CheckDisposed();
         fixed (byte* bufferPtr = buffer)
         {
-            var result = NativeMethods.luau_load(
-                ptr,
-                chunkName.Pointer,
-                bufferPtr,
-                (nuint)buffer.Length,
-                0
-            );
+            var result = ProtectedLoad(chunkName.Pointer, bufferPtr, (nuint)buffer.Length);
             CheckResult(result);
         }
     }
@@ -328,7 +341,7 @@ public sealed unsafe partial class LuauState
     public LuauBuffer NewBuffer(int size)
     {
         CheckDisposed();
-        _ = NativeMethods.lua_newbuffer(ptr, (nuint)size);
+        _ = MemoryOperation(MemoryOp.NewBuffer, size: (nuint)size);
         return new LuauBuffer(this, this.Ref());
     }
 
@@ -472,7 +485,8 @@ public sealed unsafe partial class LuauState
     {
         CheckDisposed();
         nuint len;
-        var strPtr = NativeMethods.lua_tolstring(ptr, index, &len);
+        var strPtr = (byte*)MemoryOperation(MemoryOp.ToString, index);
+        len = strPtr == null ? 0 : (nuint)NativeMethods.lua_objlen(ptr, index);
         if (strPtr == null)
         {
             return string.Empty;
@@ -484,34 +498,34 @@ public sealed unsafe partial class LuauState
     {
         CheckDisposed();
         using var nameBytes = new CString(name);
-        CheckResult(NativeMethods.nulua_pgetglobal(ptr, nameBytes.Pointer));
+        MemoryOperation(MemoryOp.GetGlobal, data: nameBytes.Pointer);
     }
 
     public void SetGlobal(ReadOnlySpan<char> name)
     {
         CheckDisposed();
         using var nameBytes = new CString(name);
-        CheckResult(NativeMethods.nulua_psetglobal(ptr, nameBytes.Pointer));
+        MemoryOperation(MemoryOp.SetGlobal, data: nameBytes.Pointer);
     }
 
     public void GetTable(int index)
     {
         CheckDisposed();
-        CheckResult(NativeMethods.nulua_pgettable(ptr, index));
+        MemoryOperation(MemoryOp.GetTable, index);
     }
 
     public void GetField(int index, ReadOnlySpan<char> name)
     {
         CheckDisposed();
         using var nameBytes = new CString(name);
-        CheckResult(NativeMethods.nulua_pgetfield(ptr, index, nameBytes.Pointer));
+        MemoryOperation(MemoryOp.GetField, index, data: nameBytes.Pointer);
     }
 
     public void SetField(int index, ReadOnlySpan<char> name)
     {
         CheckDisposed();
         using var nameBytes = new CString(name);
-        CheckResult(NativeMethods.nulua_psetfield(ptr, index, nameBytes.Pointer));
+        MemoryOperation(MemoryOp.SetField, index, data: nameBytes.Pointer);
     }
 
     public void GetI(int index, long n)
@@ -519,7 +533,7 @@ public sealed unsafe partial class LuauState
         CheckDisposed();
         var absIndex = NativeMethods.lua_absindex(ptr, index);
         NativeMethods.lua_pushinteger(ptr, (int)n);
-        CheckResult(NativeMethods.nulua_pgettable(ptr, absIndex));
+        MemoryOperation(MemoryOp.GetTable, absIndex);
     }
 
     public void SetI(int index, long n)
@@ -528,7 +542,7 @@ public sealed unsafe partial class LuauState
         var absIndex = NativeMethods.lua_absindex(ptr, index);
         NativeMethods.lua_pushinteger(ptr, (int)n);
         NativeMethods.lua_insert(ptr, -2);
-        CheckResult(NativeMethods.nulua_psettable(ptr, absIndex));
+        MemoryOperation(MemoryOp.SetTable, absIndex);
     }
 
     public void NewUserData(int size, int userValueCount)
@@ -538,7 +552,7 @@ public sealed unsafe partial class LuauState
         {
             throw new NotSupportedException("Multiple user values are not supported on Luau.");
         }
-        NativeMethods.lua_newuserdatatagged(ptr, (nuint)size, 0);
+        MemoryOperation(MemoryOp.NewUserData, size: (nuint)size);
     }
 
     public bool TryGetUserValue(int index, int userValueIndex, out LuaValueType type)
@@ -573,23 +587,61 @@ public sealed unsafe partial class LuauState
         return true;
     }
 
-    public void NewFunction(LuaFunc<LuauState> func, int upvalueCount)
+    static int InvokeSyncCore(lua_State* L)
     {
-        static int Fn(lua_State* L)
-        {
-            var state = GetOrCreate(L, default);
-            var main = GetMainState(L);
-            var funcIndex = NativeMethods.lua_tointegerx(
-                L,
-                NativeMethods.LUA_GLOBALSINDEX - 1,
-                null
-            );
-            var func = main.funcs[funcIndex];
+        var state = GetOrCreate(L, default);
+        var main = ptrToState[(nint)NativeMethods.lua_mainthread(L)];
+        var funcIndex = NativeMethods.lua_tointegerx(L, NativeMethods.LUA_GLOBALSINDEX - 1, null);
+        var func = main.funcs[funcIndex];
 
-            var numArgs = NativeMethods.lua_gettop(L);
-            return func(state, new LuaFuncArguments(state, numArgs));
+        var numArgs = NativeMethods.lua_gettop(L);
+        return func(state, new LuaFuncArguments(state, numArgs));
+    }
+
+    static int InvokeAsyncCore(lua_State* L)
+    {
+        var state = GetOrCreate(L, default);
+        var main = ptrToState[(nint)NativeMethods.lua_mainthread(L)];
+
+        if (NativeMethods.lua_isyieldable(L) == 0)
+        {
+            throw new InvalidOperationException(
+                "Attempt to call async function from a non-yieldable context."
+            );
         }
 
+        var funcIndex = NativeMethods.lua_tointegerx(L, NativeMethods.LUA_GLOBALSINDEX - 1, null);
+        var func = main.asyncFuncs[funcIndex];
+
+        var numArgs = NativeMethods.lua_gettop(L);
+        var snapshot = numArgs == 0 ? [] : new LuaValue[numArgs];
+        for (int i = 0; i < numArgs; i++)
+        {
+            snapshot[i] = state.ToLuaValue(i + 1);
+        }
+        var args = new LuaFuncArguments(snapshot, numArgs);
+        var ct = state.asyncCancellationToken;
+
+        var task = func(state, args, ct);
+
+        if (task.IsCompletedSuccessfully)
+        {
+            return task.Result;
+        }
+
+        state.pendingAsyncTask = task;
+        state.hasPendingTask = true;
+        NativeMethods.lua_settop(L, 0);
+        // Luau does not support continuation-aware yields through lua_pushcclosurek
+        // (the cont parameter is only invoked for protected-call continuations).
+        // The async driver pushes the awaited results back onto the stack and
+        // re-resumes the coroutine; those results become the yield expression's
+        // value, which is exactly what we want.
+        return NativeMethods.lua_yield(L, 0);
+    }
+
+    public void NewFunction(LuaFunc<LuauState> func, int upvalueCount)
+    {
         CheckDisposed();
 
         var top = NativeMethods.lua_gettop(ptr);
@@ -602,60 +654,25 @@ public sealed unsafe partial class LuauState
         funcs.Add(func);
         NativeMethods.lua_pushinteger(ptr, funcIndex);
         NativeMethods.lua_insert(ptr, -upvalueCount - 1);
-        NativeMethods.lua_pushcclosurek(ptr, Fn, null, upvalueCount + 1, null!);
+        try
+        {
+            MemoryOperation(
+                MemoryOp.NewFunction,
+                upvalueCount + 1,
+                data: (void*)Marshal.GetFunctionPointerForDelegate(syncCallback)
+            );
+        }
+        catch
+        {
+            funcs.RemoveAt(funcIndex);
+            NativeMethods.lua_remove(ptr, top - upvalueCount + 1);
+            NativeMethods.lua_settop(ptr, top);
+            throw;
+        }
     }
 
     public void NewFunction(AsyncLuaFunc<LuauState> func, int upvalueCount)
     {
-        static int AsyncCFn(lua_State* L)
-        {
-            var state = GetOrCreate(L, default);
-            var main = GetMainState(L);
-
-            if (NativeMethods.lua_isyieldable(L) == 0)
-            {
-                ReadOnlySpan<byte> errMsg =
-                    "attempt to call async function from a non-yieldable context\0"u8;
-                return NativeMethods.luau_error(
-                    L,
-                    (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(errMsg))
-                );
-            }
-
-            var funcIndex = NativeMethods.lua_tointegerx(
-                L,
-                NativeMethods.LUA_GLOBALSINDEX - 1,
-                null
-            );
-            var func = main.asyncFuncs[funcIndex];
-
-            var numArgs = NativeMethods.lua_gettop(L);
-            var snapshot = numArgs == 0 ? [] : new LuaValue[numArgs];
-            for (int i = 0; i < numArgs; i++)
-            {
-                snapshot[i] = state.ToLuaValue(i + 1);
-            }
-            var args = new LuaFuncArguments(snapshot, numArgs);
-            var ct = state.asyncCancellationToken;
-
-            var task = func(state, args, ct);
-
-            if (task.IsCompletedSuccessfully)
-            {
-                return task.Result;
-            }
-
-            state.pendingAsyncTask = task;
-            state.hasPendingTask = true;
-            NativeMethods.lua_settop(L, 0);
-            // Luau does not support continuation-aware yields through lua_pushcclosurek
-            // (the cont parameter is only invoked for protected-call continuations).
-            // The async driver pushes the awaited results back onto the stack and
-            // re-resumes the coroutine; those results become the yield expression's
-            // value, which is exactly what we want.
-            return NativeMethods.lua_yield(L, 0);
-        }
-
         CheckDisposed();
 
         var top = NativeMethods.lua_gettop(ptr);
@@ -668,7 +685,22 @@ public sealed unsafe partial class LuauState
         asyncFuncs.Add(func);
         NativeMethods.lua_pushinteger(ptr, funcIndex);
         NativeMethods.lua_insert(ptr, -upvalueCount - 1);
-        NativeMethods.lua_pushcclosurek(ptr, AsyncCFn, null, upvalueCount + 1, null!);
+        try
+        {
+            MemoryOperation(
+                MemoryOp.NewFunction,
+                upvalueCount + 1,
+                1,
+                (void*)Marshal.GetFunctionPointerForDelegate(asyncCallback)
+            );
+        }
+        catch
+        {
+            asyncFuncs.RemoveAt(funcIndex);
+            NativeMethods.lua_remove(ptr, top - upvalueCount + 1);
+            NativeMethods.lua_settop(ptr, top);
+            throw;
+        }
     }
 
     static readonly byte[]?[] arithBytecodeCache = new byte[(int)LuaArithmeticOperator.Shr + 1][];
@@ -756,13 +788,7 @@ public sealed unsafe partial class LuauState
         using var chunkName = new CString("arith"u8);
         fixed (byte* bcPtr = bytecode)
         {
-            var loadResult = NativeMethods.luau_load(
-                ptr,
-                chunkName.Pointer,
-                bcPtr,
-                (nuint)bytecode.Length,
-                0
-            );
+            var loadResult = ProtectedLoad(chunkName.Pointer, bcPtr, (nuint)bytecode.Length);
             CheckResult(loadResult);
         }
 
@@ -770,7 +796,7 @@ public sealed unsafe partial class LuauState
         // pattern becomes [..., func, a, (b)].
         NativeMethods.lua_insert(ptr, -1 - argCount);
 
-        var callResult = NativeMethods.lua_pcall(ptr, argCount, 1, 0);
+        var callResult = (int)MemoryOperation(MemoryOp.Call, argCount, 1);
         CheckResult(callResult);
     }
 
@@ -842,19 +868,19 @@ public sealed unsafe partial class LuauState
             LuaComparisonOperator.LessOrEqual => 2,
             _ => throw new NotSupportedException($"Unsupported Lua comparison operator: {op}"),
         };
-        CheckResult(NativeMethods.nulua_pcompare(ptr, nativeOp));
+        MemoryOperation(MemoryOp.Compare, nativeOp);
     }
 
     public void Len(int index)
     {
         CheckDisposed();
-        CheckResult(NativeMethods.nulua_plen(ptr, index));
+        MemoryOperation(MemoryOp.Length, index);
     }
 
     public void Call(int argCount, int returnCount)
     {
         CheckDisposed();
-        var result = NativeMethods.lua_pcall(ptr, argCount, returnCount, 0);
+        var result = (int)MemoryOperation(MemoryOp.Call, argCount, returnCount);
         CheckResult(result);
     }
 
@@ -862,7 +888,7 @@ public sealed unsafe partial class LuauState
     {
         CheckDisposed();
         int hasNext;
-        CheckResult(NativeMethods.nulua_pnext(ptr, index, &hasNext));
+        hasNext = (int)MemoryOperation(MemoryOp.Next, index);
     }
 
     public LuaValueType RawGet(int index)
@@ -882,13 +908,22 @@ public sealed unsafe partial class LuauState
     public void Resume(int argCount)
     {
         CheckDisposed();
-        var result = NativeMethods.lua_resume(ptr, from == null ? null : from.ptr, argCount);
+        var result = (int)MemoryOperation(
+            MemoryOp.Resume,
+            argCount,
+            data: from == null ? null : from.ptr
+        );
         CheckResult(result);
     }
 
     internal int RunResumeStep(int argCount)
     {
-        var status = NativeMethods.lua_resume(ptr, from == null ? null : from.ptr, argCount);
+        var status = (int)MemoryOperation(
+            MemoryOp.Resume,
+            argCount,
+            data: from == null ? null : from.ptr
+        );
+        ThrowPendingInterrupt();
         if (status != LUA_OK && status != LUA_YIELD)
         {
             nuint len;
@@ -905,8 +940,8 @@ public sealed unsafe partial class LuauState
         CheckDisposed();
         // Luau's `lua_ref` behaves differently than in standard Lua.
         // ref: https://github.com/luau-lang/luau/issues/247
-        var refId = NativeMethods.lua_ref(
-            ptr,
+        var refId = (int)MemoryOperation(
+            MemoryOp.Reference,
             index == NativeMethods.LUA_REGISTRYINDEX ? -1 : index
         );
         if (refId == NativeMethods.LUA_NOREF)

@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 
 #include "../../shim/nulua_shim.h"
 
@@ -30,6 +31,21 @@ LUAU_SHIM_API int luau_getintegerflag(const char* name, int* value);
 // returning `int` so the binding generator can surface it and so call
 // sites can use it from a Lua C function as a tail expression.
 LUAU_SHIM_API int luau_error(void* L, const char* msg);
+
+
+// NuLua owns lua_Callbacks.userdata while an interrupt is installed.
+// Returns nonzero to request an error after the managed frame returns.
+typedef int (*luau_interrupt_callback)(void* state);
+LUAU_SHIM_API void luau_setinterrupt(void* state, luau_interrupt_callback callback);
+
+LUAU_SHIM_API void* luau_newtrackedstate(void);
+LUAU_SHIM_API void luau_closetrackedstate(void* state);
+LUAU_SHIM_API int luau_memoryinfo(void* state, size_t* used, size_t* limit);
+LUAU_SHIM_API size_t luau_setmemorylimit(void* state, size_t limit);
+// Protected host operations: integer codes are defined in LuauState.Memory.cs.
+LUAU_SHIM_API int luau_memoryoperation(void* state, int operation, int a, int b,
+    const void* data, size_t size, void** pointerResult, int* integerResult);
+LUAU_SHIM_API int luau_pload(void* state, const char* name, const char* data, size_t size);
 
 #ifdef __cplusplus
 }

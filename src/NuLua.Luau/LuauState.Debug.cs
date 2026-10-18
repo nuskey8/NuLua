@@ -47,7 +47,10 @@ public sealed unsafe partial class LuauState : ILuauDebug
         lua_Debug ar = default;
         fixed (byte* whatPtr = what)
         {
-            if (NativeMethods.lua_getinfo(ptr, level, whatPtr, &ar) == 0)
+            if (
+                (int)MemoryOperation(MemoryOp.GetInfo, level, data: whatPtr, size: (nuint)(&ar))
+                == 0
+            )
             {
                 info = default;
                 return false;
@@ -60,28 +63,28 @@ public sealed unsafe partial class LuauState : ILuauDebug
     string? ILuaDebug.GetLocal(int level, int n)
     {
         CheckDisposed();
-        var name = NativeMethods.lua_getlocal(ptr, level, n);
+        var name = (byte*)MemoryOperation(MemoryOp.GetLocal, level, n);
         return name == null ? null : Utf8NullTerminated(name);
     }
 
     string? ILuaDebug.SetLocal(int level, int n)
     {
         CheckDisposed();
-        var name = NativeMethods.lua_setlocal(ptr, level, n);
+        var name = (byte*)MemoryOperation(MemoryOp.SetLocal, level, n);
         return name == null ? null : Utf8NullTerminated(name);
     }
 
     string? ILuaDebug.GetUpvalue(int funcIndex, int n)
     {
         CheckDisposed();
-        var name = NativeMethods.lua_getupvalue(ptr, funcIndex, n);
+        var name = (byte*)MemoryOperation(MemoryOp.GetUpvalue, funcIndex, n);
         return name == null ? null : Utf8NullTerminated(name);
     }
 
     string? ILuaDebug.SetUpvalue(int funcIndex, int n)
     {
         CheckDisposed();
-        var name = NativeMethods.lua_setupvalue(ptr, funcIndex, n);
+        var name = (byte*)MemoryOperation(MemoryOp.SetUpvalue, funcIndex, n);
         return name == null ? null : Utf8NullTerminated(name);
     }
 
@@ -112,7 +115,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     int ILuauDebug.GetArgument(int level, int n)
     {
         CheckDisposed();
-        return NativeMethods.lua_getargument(ptr, level, n);
+        return (int)MemoryOperation(MemoryOp.GetArgument, level, n);
     }
 
     void ILuauDebug.SetSingleStep(bool enabled)
@@ -124,7 +127,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     int ILuauDebug.SetBreakpoint(int funcIndex, int line, bool enabled)
     {
         CheckDisposed();
-        return NativeMethods.lua_breakpoint(ptr, funcIndex, line, enabled ? 1 : 0);
+        return (int)MemoryOperation(MemoryOp.Breakpoint, funcIndex, line, size: enabled ? 1u : 0u);
     }
 
     string ILuauDebug.GetDebugTrace()
@@ -137,6 +140,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     void ILuauDebug.GetCoverage(int funcIndex, Action<LuauCoverageEntry> visit)
     {
         CheckDisposed();
+        CheckDebugBudget(true);
         if (visit == null)
             throw new ArgumentNullException(nameof(visit));
 
@@ -191,6 +195,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     void ILuauDebug.SetDebugBreakCallback(LuaHook<LuauState>? callback)
     {
         CheckDisposed();
+        CheckDebugBudget(callback != null);
         debugBreakHook = callback;
         debugBreakDelegate = callback == null ? null : DebugBreakEntry;
         var callbacks = NativeMethods.lua_callbacks(ptr);
@@ -203,6 +208,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     void ILuauDebug.SetDebugStepCallback(LuaHook<LuauState>? callback)
     {
         CheckDisposed();
+        CheckDebugBudget(callback != null);
         debugStepHook = callback;
         debugStepDelegate = callback == null ? null : DebugStepEntry;
         var callbacks = NativeMethods.lua_callbacks(ptr);
@@ -215,6 +221,7 @@ public sealed unsafe partial class LuauState : ILuauDebug
     void ILuauDebug.SetDebugInterruptCallback(LuaHook<LuauState>? callback)
     {
         CheckDisposed();
+        CheckDebugBudget(callback != null);
         debugInterruptHook = callback;
         debugInterruptDelegate = callback == null ? null : DebugInterruptEntry;
         var callbacks = NativeMethods.lua_callbacks(ptr);

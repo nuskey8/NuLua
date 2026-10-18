@@ -88,6 +88,7 @@ public interface ILuaState : ILuaObject
 
     ILuaDebug Debug { get; }
     ILuaGarbageCollection GarbageCollection { get; }
+    ILuaMemoryControl Memory { get; }
 }
 
 public interface ILuaGarbageCollection

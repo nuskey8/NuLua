@@ -10,7 +10,7 @@ using NuLua.Interop.{{ name }};
 
 namespace NuLua.{{ name }};
 
-public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>, ILuaDebug<{{ name }}State>, ILuaGarbageCollection
+public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>, ILuaDebug<{{ name }}State>, ILuaGarbageCollection, ILuaMemoryControl
 {
     static readonly ConcurrentDictionary<nint, {{ name }}State> ptrToState = new();
 
@@ -37,7 +37,11 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
 
     public static {{ name }}State Create()
     {
+{{~ if name == "Luau" ~}}
+        var ptr = CreateNativeState();
+{{~ else ~}}
         var ptr = NativeMethods.luaL_newstate();
+{{~ end ~}}
         if (ptr == null)
         {
             throw new LuaException(LUA_ERRMEM, "Failed to create Lua state.");
@@ -91,6 +95,9 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
 
     public void Dispose()
     {
+{{~ if name == "Luau" ~}}
+        CheckInterruptAccess();
+{{~ end ~}}
         foreach (var childState in childStates)
         {
             childState.Dispose();
@@ -104,7 +111,14 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
             if (from == null)
             {
                 ptrToState.TryRemove((nint)disposePtr, out _);
+{{~ if name == "Luau" ~}}
+                ClearInterrupt();
+{{~ end ~}}
+{{~ if name == "Luau" ~}}
+                CloseNativeState(disposePtr);
+{{~ else ~}}
                 NativeMethods.lua_close(disposePtr);
+{{~ end ~}}
             }
             else
             {
@@ -117,6 +131,9 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
 
     void CheckDisposed()
     {
+{{~ if name == "Luau" ~}}
+        CheckInterruptAccess();
+{{~ end ~}}
         if (ptr == null)
         {
             throw new ObjectDisposedException(nameof({{ name }}State));
@@ -171,7 +188,11 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
         CheckDisposed();
         fixed (byte* strPtr = utf8Str)
         {
+    {{~ if name == "Luau" ~}}
+            MemoryOperation(MemoryOp.PushString, data: strPtr, size: (nuint)utf8Str.Length);
+{{~ else ~}}
             NativeMethods.lua_pushlstring(ptr, strPtr, (nuint)utf8Str.Length);
+{{~ end ~}}
         }
     }
 
@@ -365,19 +386,31 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     public void NewTable(int initialArraySize = 0, int initialRecordsSize = 0)
     {
         CheckDisposed();
+{{~ if name == "Luau" ~}}
+        MemoryOperation(MemoryOp.NewTable, initialArraySize, initialRecordsSize);
+{{~ else ~}}
         NativeMethods.lua_createtable(ptr, initialArraySize, initialRecordsSize);
+{{~ end ~}}
     }
 
     public void SetTable(int index)
     {
         CheckDisposed();
+{{~ if name == "Luau" ~}}
+        MemoryOperation(MemoryOp.SetTable, index);
+{{~ else ~}}
         CheckResult(NativeMethods.nulua_psettable(ptr, index));
+{{~ end ~}}
     }
 
     public void NewThread()
     {
         CheckDisposed();
+{{~ if name == "Luau" ~}}
+        var threadPtr = (lua_State*)MemoryOperation(MemoryOp.NewThread);
+{{~ else ~}}
         var threadPtr = NativeMethods.lua_newthread(ptr);
+{{~ end ~}}
         if (threadPtr == null)
         {
             throw new LuaException(LUA_ERRMEM, "Failed to create new thread.");
@@ -387,7 +420,11 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     public void Concat(int count)
     {
         CheckDisposed();
+{{~ if name == "Luau" ~}}
+        MemoryOperation(MemoryOp.Concat, count);
+{{~ else ~}}
         CheckResult(NativeMethods.nulua_pconcat(ptr, count));
+{{~ end ~}}
     }
 
     public bool RawEqual(int index1, int index2)
@@ -399,7 +436,11 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     public void RawSet(int index)
     {
         CheckDisposed();
+{{~ if name == "Luau" ~}}
+        MemoryOperation(MemoryOp.RawSet, index);
+{{~ else ~}}
         NativeMethods.lua_rawset(ptr, index);
+{{~ end ~}}
     }
 
     public bool TryGetMetatable(int index, [NotNullWhen(true)] out LuaTable? metatable)
@@ -437,14 +478,22 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     {
         CheckDisposed();
         using var cName = new CString(utf8Name);
+{{~ if name == "Luau" ~}}
+        return MemoryOperation(MemoryOp.NewMetatable, data: cName.Pointer) != 0;
+{{~ else ~}}
         return NativeMethods.luaL_newmetatable(ptr, cName.Pointer) != 0;
+{{~ end ~}}
     }
 
     public bool NewMetatable(ReadOnlySpan<char> name)
     {
         CheckDisposed();
         using var cName = new CString(name);
+{{~ if name == "Luau" ~}}
+        return MemoryOperation(MemoryOp.NewMetatable, data: cName.Pointer) != 0;
+{{~ else ~}}
         return NativeMethods.luaL_newmetatable(ptr, cName.Pointer) != 0;
+{{~ end ~}}
     }
 
 {{~ if name == "Luau" ~}}
@@ -454,6 +503,19 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     public ILuaDebug<{{ name }}State> Debug => this;
 {{~ end ~}}
     ILuaDebug ILuaState.Debug => this;
+    public ILuaMemoryControl Memory => this;
+{{~ if name != "Luau" ~}}
+    long ILuaMemoryControl.UsedBytes => GarbageCollection.GetByteCount();
+    bool ILuaMemoryControl.SupportsLimit => false;
+    long ILuaMemoryControl.SetLimit(long bytes)
+    {
+        CheckDisposed();
+        if (bytes < 0)
+            throw new ArgumentOutOfRangeException(nameof(bytes));
+        throw new NotSupportedException("This backend does not support allocator limits.");
+    }
+{{~ end ~}}
+
     public ILuaGarbageCollection GarbageCollection => this;
 
     void ILuaGarbageCollection.Stop()
@@ -461,7 +523,7 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
         CheckDisposed();
 {{~ if name == "Luau" ~}}
         // Luau's LUA_GCSTOP is the first member of an unnamed enum exposed only through the C header.
-        _ = NativeMethods.lua_gc(ptr, 0 /* LUA_GCSTOP */, 0);
+        _ = (int)MemoryOperation(MemoryOp.GarbageCollect, 0, 0);
 {{~ else if version >= 504 ~}}
         _ = NativeMethods.lua_gc(ptr, (int)NativeMethods.LUA_GCSTOP);
 {{~ else ~}}
@@ -473,7 +535,7 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     {
         CheckDisposed();
 {{~ if name == "Luau" ~}}
-        _ = NativeMethods.lua_gc(ptr, 1 /* LUA_GCRESTART */, 0);
+        _ = (int)MemoryOperation(MemoryOp.GarbageCollect, 1, 0);
 {{~ else if version >= 504 ~}}
         _ = NativeMethods.lua_gc(ptr, (int)NativeMethods.LUA_GCRESTART);
 {{~ else ~}}
@@ -485,7 +547,7 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     {
         CheckDisposed();
 {{~ if name == "Luau" ~}}
-        _ = NativeMethods.lua_gc(ptr, 2 /* LUA_GCCOLLECT */, 0);
+        _ = (int)MemoryOperation(MemoryOp.GarbageCollect, 2, 0);
 {{~ else if version >= 504 ~}}
         _ = NativeMethods.lua_gc(ptr, (int)NativeMethods.LUA_GCCOLLECT);
 {{~ else ~}}
@@ -497,7 +559,7 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
     {
         CheckDisposed();
 {{~ if name == "Luau" ~}}
-        return NativeMethods.lua_gc(ptr, 6 /* LUA_GCSTEP */, stepSize);
+        return (int)MemoryOperation(MemoryOp.GarbageCollect, 6, stepSize);
 {{~ else ~}}
         return NativeMethods.lua_gc(ptr, (int)NativeMethods.LUA_GCSTEP, stepSize);
 {{~ end ~}}

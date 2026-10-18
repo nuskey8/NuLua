@@ -69,6 +69,9 @@ namespace NuLua.Interop.Luau
         public delegate int lua_tocfunction_return_delegate(lua_State* L);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int luau_setinterrupt_callback_delegate(void* state);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void lua_callhook_hook_delegate(lua_State* L, lua_Debug* ar);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -840,6 +843,27 @@ namespace NuLua.Interop.Luau
 
         [DllImport(__DllName, EntryPoint = "luau_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int luau_error(void* L, byte* msg);
+
+        [DllImport(__DllName, EntryPoint = "luau_setinterrupt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void luau_setinterrupt(void* state, luau_setinterrupt_callback_delegate callback);
+
+        [DllImport(__DllName, EntryPoint = "luau_newtrackedstate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void* luau_newtrackedstate();
+
+        [DllImport(__DllName, EntryPoint = "luau_closetrackedstate", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void luau_closetrackedstate(void* state);
+
+        [DllImport(__DllName, EntryPoint = "luau_memoryinfo", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_memoryinfo(void* state, nuint* used, nuint* limit);
+
+        [DllImport(__DllName, EntryPoint = "luau_setmemorylimit", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern nuint luau_setmemorylimit(void* state, nuint limit);
+
+        [DllImport(__DllName, EntryPoint = "luau_memoryoperation", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_memoryoperation(void* state, int operation, int a, int b, void* data, nuint size, void** pointerResult, int* integerResult);
+
+        [DllImport(__DllName, EntryPoint = "luau_pload", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern int luau_pload(void* state, byte* name, byte* data, nuint size);
 
 
     }

@@ -168,7 +168,7 @@ $(BUILD)/luau/$(RID)/common/%.o: $(LUAU_COMMON_SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS_LUAU) -c $< -o $@
 
-$(BUILD)/luau/$(RID)/shim/%.o: $(LUAU_SHIM_SRC)/%.cpp $(NULUA_SHIM)
+$(BUILD)/luau/$(RID)/shim/%.o: $(LUAU_SHIM_SRC)/%.cpp $(LUAU_SHIM_SRC)/luau_shim.h $(NULUA_SHIM) shim/nulua_shim.h
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS_LUAU) -c $< -o $@
 
