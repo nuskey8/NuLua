@@ -87,6 +87,7 @@ public sealed unsafe partial class LuauState : ILuaState<LuauState>, ILuaDebug<L
 
     public void Dispose()
     {
+        CheckInterruptAccess();
         foreach (var childState in childStates)
         {
             childState.Dispose();
@@ -100,6 +101,7 @@ public sealed unsafe partial class LuauState : ILuaState<LuauState>, ILuaDebug<L
             if (from == null)
             {
                 ptrToState.TryRemove((nint)disposePtr, out _);
+                ClearInterrupt();
                 NativeMethods.lua_close(disposePtr);
             }
             else
@@ -113,6 +115,7 @@ public sealed unsafe partial class LuauState : ILuaState<LuauState>, ILuaDebug<L
 
     void CheckDisposed()
     {
+        CheckInterruptAccess();
         if (ptr == null)
         {
             throw new ObjectDisposedException(nameof(LuauState));

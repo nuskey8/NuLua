@@ -69,6 +69,9 @@ namespace NuLua.Interop.Luau
         public delegate int lua_tocfunction_return_delegate(lua_State* L);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int luau_setinterrupt_callback_delegate(void* state);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void lua_callhook_hook_delegate(lua_State* L, lua_Debug* ar);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -840,6 +843,9 @@ namespace NuLua.Interop.Luau
 
         [DllImport(__DllName, EntryPoint = "luau_error", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern int luau_error(void* L, byte* msg);
+
+        [DllImport(__DllName, EntryPoint = "luau_setinterrupt", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void luau_setinterrupt(void* state, luau_setinterrupt_callback_delegate callback);
 
 
     }

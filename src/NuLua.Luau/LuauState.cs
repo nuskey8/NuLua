@@ -84,6 +84,7 @@ public sealed unsafe partial class LuauState
 
     void CheckResult(int code)
     {
+        ThrowPendingInterrupt();
         if (code is not LUA_OK and not LUA_YIELD)
         {
             nuint len;
@@ -905,6 +906,7 @@ public sealed unsafe partial class LuauState
     internal int RunResumeStep(int argCount)
     {
         var status = NativeMethods.lua_resume(ptr, from == null ? null : from.ptr, argCount);
+        ThrowPendingInterrupt();
         if (status != LUA_OK && status != LUA_YIELD)
         {
             nuint len;

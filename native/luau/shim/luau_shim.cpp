@@ -63,3 +63,19 @@ extern "C" int luau_error(void* L, const char* msg) {
     // Unreachable: lua_error longjmps. Keep a return for type-correctness.
     return 0;
 }
+
+static void nulua_interrupt(lua_State* L, int gc) {
+    if (gc >= 0) // Raising an error during GC is not supported.
+        return;
+    auto callback = reinterpret_cast<luau_interrupt_callback>(lua_callbacks(L)->userdata);
+    if (callback && callback(L)) {
+        lua_pushliteral(L, "host execution interrupt");
+        lua_error(L); // The managed callback has already returned.
+    }
+}
+
+extern "C" void luau_setinterrupt(void* state, luau_interrupt_callback callback) {
+    auto* cb = lua_callbacks(static_cast<lua_State*>(state));
+    cb->userdata = reinterpret_cast<void*>(callback);
+    cb->interrupt = callback ? nulua_interrupt : nullptr;
+}

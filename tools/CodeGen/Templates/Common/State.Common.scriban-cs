@@ -91,6 +91,9 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
 
     public void Dispose()
     {
+{{~ if name == "Luau" ~}}
+        CheckInterruptAccess();
+{{~ end ~}}
         foreach (var childState in childStates)
         {
             childState.Dispose();
@@ -104,6 +107,9 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
             if (from == null)
             {
                 ptrToState.TryRemove((nint)disposePtr, out _);
+{{~ if name == "Luau" ~}}
+                ClearInterrupt();
+{{~ end ~}}
                 NativeMethods.lua_close(disposePtr);
             }
             else
@@ -117,6 +123,9 @@ public sealed unsafe partial class {{ name }}State : ILuaState<{{ name }}State>,
 
     void CheckDisposed()
     {
+{{~ if name == "Luau" ~}}
+        CheckInterruptAccess();
+{{~ end ~}}
         if (ptr == null)
         {
             throw new ObjectDisposedException(nameof({{ name }}State));

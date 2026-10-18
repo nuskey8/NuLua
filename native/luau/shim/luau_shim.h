@@ -34,3 +34,8 @@ LUAU_SHIM_API int luau_error(void* L, const char* msg);
 #ifdef __cplusplus
 }
 #endif
+
+// NuLua owns lua_Callbacks.userdata while an interrupt is installed.
+// Returns nonzero to request an error after the managed frame returns.
+typedef int (*luau_interrupt_callback)(void* state);
+LUAU_SHIM_API void luau_setinterrupt(void* state, luau_interrupt_callback callback);

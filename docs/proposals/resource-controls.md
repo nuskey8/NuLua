@@ -1,6 +1,6 @@
 # Proposal: resource controls for server-side embedding
 
-Status: implementation in progress. Sandbox initialization is implemented; memory and execution controls below remain proposals.
+Status: implementation in progress. Sandbox initialization and Luau execution interruption are implemented; memory controls below remain a proposal.
 
 Related issues: [sandbox initialization #19](https://github.com/nuskey8/NuLua/issues/19), [Luau interruption #21](https://github.com/nuskey8/NuLua/issues/21), and [VM memory budgets #22](https://github.com/nuskey8/NuLua/issues/22).
 
@@ -71,30 +71,37 @@ public delegate LuaVmAction LuaExecutionHook(
 
 The existing void-returning debug-hook API remains available. Because a native Lua thread has one hook slot, observational and execution hooks must have an explicit coexistence contract. Proposed initial rule: installing one replaces the other on the affected thread, and removal clears that registration. Global registrations supply the default for new NuLua-created threads; per-thread registrations override it. Lua-created coroutine inheritance and propagation to already-existing threads need a precise contract before implementation.
 
-For Luau, `SetInterrupt` installs the VM-wide periodic `interrupt` callback, not `debuginterrupt`. Null removes the callback. All coroutines share the registration. Returning `Continue` allows execution; throwing requests an error through the protected native boundary. `Yield` requests suspension only where the backend permits it. We should agree on unsupported-yield behavior and verify Lua/LuaJIT differences before exposing that enum value on every backend; continue/error-only is a possible first increment.
-
-Illustrative deadline policy:
+Luau implements `SetInterrupt(Action? callback)`: return normally to continue,
+throw to interrupt, or pass null to remove the VM-wide registration. Registration
+through any NuLua-created thread replaces the callback for all existing and new
+coroutines, including script-created coroutines. Yield is deliberately deferred.
+The callback checks host state only; accessing or disposing the VM from it throws.
+GC interrupts do not invoke managed code. NuLua reserves `lua_Callbacks.userdata`
+and the periodic `interrupt` slot while installed; do not overwrite them through
+raw native access. Debug interrupt registration is independent.
 
 ```csharp
-using var state = LuauState.Create();
 var timer = System.Diagnostics.Stopwatch.StartNew();
-
-state.SetInterrupt(_ =>
+state.SetInterrupt(() =>
 {
     if (timer.Elapsed >= TimeSpan.FromMilliseconds(100))
         throw new TimeoutException("Script deadline exceeded.");
-
-    return LuaVmAction.Continue;
 });
-
 state.DoString(source);
 ```
 
-Native callbacks must catch managed exceptions, retain them, return from the managed callback, and only then raise the Lua error from native code. No Lua longjmp/C++ exception should deliberately cross a managed callback frame. Define how retained exceptions become managed failures, including when Lua catches an error with `pcall`; clearing pending exception state and allowing later state reuse require tests.
+Managed failures are retained, the managed callback returns, and the native
+trampoline then raises a Lua error. The next host boundary rethrows the original
+managed exception, even if script code caught the Lua error. The pending failure
+is then cleared so the state can be reused. Registration is rooted until removed
+or the main state is disposed. Callback frequency is VM-dependent; host callbacks
+are not preempted. Adversarial loops that repeatedly catch errors with `pcall`
+are not guaranteed to terminate; use external process limits for that guarantee.
 
-Callbacks need rooted lifetime management, recursion protection, safe replacement/removal, and cleanup before VM destruction. Luau GC interrupts must not use an error-raising path. See [mlua's interrupt implementation](https://github.com/mlua-rs/mlua/blob/v0.12.2/src/state.rs#L793).
-
-The callback checks a host policy, such as a monotonic deadline or an atomic cancellation flag. Interrupt frequency is backend-dependent. This is cooperative interruption of VM execution, not preemption of an arbitrary blocking host callback or an exact instruction/time budget. Ordinary Lua errors can be caught by script code; repeatedly checking an expired deadline is not by itself a proof of unconditional termination. Termination guarantees under protected calls need adversarial validation.
+Native shim changes require rebuilding runtime binaries. macOS arm64 is rebuilt
+and tested locally; other platform binaries need the native build workflow before
+this feature is available there. Old binaries report `NotSupportedException` on
+registration. Existing APIs remain usable with those binaries.
 
 Automatic integration with `DoStringAsync` cancellation is deferred. It needs a separate ownership/composition contract so cancellation does not overwrite a user-installed callback.
 
