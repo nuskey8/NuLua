@@ -64,7 +64,6 @@ public sealed class LuaUserData(ILuaState state, LuaReference reference) : ILuaO
 
         if (Size != Unsafe.SizeOf<T>())
         {
-            state.Pop(1);
             result = default;
             return false;
         }

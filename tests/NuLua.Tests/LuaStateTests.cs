@@ -460,6 +460,26 @@ public class LuaStateTests
 
     [Test]
     [MethodDataSource(typeof(LuaStateCases), nameof(LuaStateCases.All))]
+    public async Task UserDataReadWithWrongSizePreservesStack(LuaStateCase lua)
+    {
+        using var state = lua.CreateState();
+        using var userData = state.CreateUserData(sizeof(int));
+
+        await Assert.That(userData.TryRead<long>(out _)).IsFalse();
+        await Assert.That(state.GetTop()).IsEqualTo(0);
+
+        state.PushString("sentinel");
+        await Assert.That(userData.TryRead<long>(out _)).IsFalse();
+        await Assert.That(state.GetTop()).IsEqualTo(1);
+        await Assert.That(state.ToString(-1)).IsEqualTo("sentinel");
+
+        await Assert.That(() => userData.Read<long>()).Throws<InvalidOperationException>();
+        await Assert.That(state.GetTop()).IsEqualTo(1);
+        await Assert.That(state.ToString(-1)).IsEqualTo("sentinel");
+    }
+
+    [Test]
+    [MethodDataSource(typeof(LuaStateCases), nameof(LuaStateCases.All))]
     public async Task GenericCreateUserDataInitializesUnmanagedValue(LuaStateCase lua)
     {
         using var state = lua.CreateState();
