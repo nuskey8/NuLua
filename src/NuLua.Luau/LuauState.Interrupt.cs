@@ -76,6 +76,8 @@ public sealed unsafe partial class LuauState
     void ThrowPendingInterrupt()
     {
         var main = ptrToState[(nint)NativeMethods.lua_mainthread(ptr)];
+        if (main.managedCallbackDepth != 0)
+            return;
         var exception = main.interruptException;
         main.interruptException = null;
         exception?.Throw();

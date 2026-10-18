@@ -1,6 +1,6 @@
 # Proposal: resource controls for server-side embedding
 
-Status: implementation in progress. Sandbox initialization and Luau execution interruption are implemented; memory controls below remain a proposal.
+Status: draft implementation. Sandbox initialization, Luau execution interrupts, and the common memory-control API with Luau allocator budgets are implemented. Standard Lua execution hooks and allocator limits remain future increments.
 
 Related issues: [sandbox initialization #19](https://github.com/nuskey8/NuLua/issues/19), [Luau interruption #21](https://github.com/nuskey8/NuLua/issues/21), and [VM memory budgets #22](https://github.com/nuskey8/NuLua/issues/22).
 
@@ -8,7 +8,7 @@ Related issues: [sandbox initialization #19](https://github.com/nuskey8/NuLua/is
 
 A server embedding Lua needs to bound VM allocations and interrupt scripts that do not yield or call host functions. Luau also needs a high-level way to install libraries and host functions before freezing the shared environment.
 
-NuLua already exposes GC measurements and debug hooks, but these do not provide an allocator budget or a supported Luau periodic execution interrupt. Its async cancellation checks occur between coroutine resumes, so they cannot stop a non-yielding loop inside a resume.
+Before this change, NuLua exposed GC measurements and debug hooks without allocator budgets or a supported Luau periodic execution interrupt. Its async cancellation checks occur between coroutine resumes, so they cannot stop a non-yielding loop inside a resume.
 
 The proposed direction follows [mlua 0.12.2](https://docs.rs/mlua/0.12.2/mlua/struct.Lua.html): share memory-control semantics across backends, expose execution hooks and Luau interrupts separately, and keep sandbox configuration Luau-specific. Backend capability differences remain explicit.
 
@@ -24,7 +24,7 @@ public interface ILuaMemoryControl
     long SetLimit(long bytes);
 }
 
-// Proposed addition to ILuaState:
+// Available on ILuaState:
 // ILuaMemoryControl Memory { get; }
 ```
 
@@ -34,7 +34,7 @@ state.OpenLibraries();
 state.Memory.SetLimit(64 * 1024 * 1024);
 ```
 
-Proposed contract:
+Implemented memory contract:
 
 - The limit covers allocator-accounted VM memory, including initialization and all coroutines belonging to that VM. It is not a per-thread or per-sandbox budget.
 - The allocator tracks usage from state creation, even when no limit is configured.
@@ -43,9 +43,27 @@ Proposed contract:
 - A refused allocation surfaces through a recoverable Lua error at a supported protected boundary. Existing `LuaException` memory-error codes can be used initially; a dedicated exception type is an open API question.
 - Managed host allocations and standalone compiler allocations are outside this budget. This does not promise a process RSS ceiling.
 
-Implementation should use a tracking allocator for owned states. Native allocator bookkeeping is preferred to calling managed code on every allocation. Accounting must handle reallocations, failed allocations, initialization failures, and disposal. Allocator capability, particularly across LuaJIT configurations, must be checked rather than assumed.
+Luau-owned states use a native tracking allocator from creation, with no managed
+callback per allocation. Usage includes allocator-requested VM pages and may differ
+from `GarbageCollection.GetByteCount()` because of Luau's page allocator. The
+budget and counter are shared by the main state and every coroutine. Lua/LuaJIT
+currently report GC-accounted usage and `SupportsLimit == false`; setting any limit
+on those backends throws. Older Luau binaries use the existing allocator, report
+unsupported limits, and keep the existing high-level APIs available.
 
-Crucially, allocation-capable API calls need protected error boundaries. A counter alone is insufficient: chunk loading, callbacks, result references, and cleanup must remain safe at the limit. [mlua's allocator](https://github.com/mlua-rs/mlua/blob/v0.12.2/src/memory.rs) temporarily relaxes limits for selected internal operations used to establish protected calls. Any similar allowance must be small, documented, and tested.
+Luau allocation-capable host operations run within native protection, including
+library setup, table/string/userdata/buffer allocation, loading, reference growth,
+function registration, table access, and debug inspection. Managed function failures
+are retained; a native trampoline raises the VM error after the managed callback
+returns. Refused allocations use `LuaException` with the VM memory-error status.
+No temporary allocation allowance is used during normal operations; disposal removes
+the limit before closing the VM so cleanup can complete.
+
+Allocator limits cannot currently be combined with Luau debug callbacks or coverage
+collection. Both registration orders are rejected rather than exposing a managed
+callback to native unwinding. The periodic execution interrupt is supported with
+limits. Raw native pointer calls bypass these protected host wrappers and are the
+caller's responsibility. Configuration and execution on the same VM must be serialized.
 
 ## Execution control
 
@@ -65,8 +83,8 @@ public delegate LuaVmAction LuaExecutionHook(
 // void SetExecutionHook(LuaExecutionHook? callback, LuaHookMask mask, int count);
 // void SetGlobalExecutionHook(LuaExecutionHook? callback, LuaHookMask mask, int count);
 
-// Proposed addition to LuauState:
-// void SetInterrupt(Func<LuauState, LuaVmAction>? callback);
+// Implemented on LuauState (continue/error only):
+// void SetInterrupt(Action? callback);
 ```
 
 The existing void-returning debug-hook API remains available. Because a native Lua thread has one hook slot, observational and execution hooks must have an explicit coexistence contract. Proposed initial rule: installing one replaces the other on the affected thread, and removal clears that registration. Global registrations supply the default for new NuLua-created threads; per-thread registrations override it. Lua-created coroutine inheritance and propagation to already-existing threads need a precise contract before implementation.
@@ -131,11 +149,11 @@ retains its immediate-freeze behavior and delegates to `Sandbox()`.
 
 ## Implementation and validation sequence
 
-Implement separate changes after agreement on each API:
+The implementation is split into one commit per feature:
 
 1. Sandbox initialization and environment semantics for #19.
 2. Native callback/error handling and Luau interrupts for #21. Follow with standard Lua execution hooks and any common cancellation helpers.
-3. Allocator accounting, protected allocation paths, and memory control for #22.
+3. Common memory accounting and Luau allocator budgets with protected allocation paths for #22. Standard Lua/LuaJIT budgets remain unsupported.
 
 Changes to generated bindings/state implementations must come from native headers, binding generation, and Scriban templates; generated files must not be edited directly. Native changes require rebuilt runtime binaries for supported platforms.
 
@@ -146,4 +164,17 @@ Validation should include:
 - Library immutability, callable installed host functions, isolated sandbox globals, repeat enable/disable, and live/cached environments.
 - State reuse and cleanup after errors, supported backend differences, and server Linux x64/arm64 execution as well as Windows/macOS coverage.
 
-These tests are proposed acceptance criteria, not tests run by this documentation-only draft. Separate VMs and external process limits remain useful where strict tenant isolation is required.
+Implemented regressions cover initialization after host setup, library immutability,
+worker globals, invalid sandbox receivers, pure loops, caught interrupt failures,
+coroutine sharing, replacement/removal, callback reentrancy, shared memory accounting,
+limit changes, GC reclamation, allocation refusal in execution and host callbacks,
+loading/reference growth, debug incompatibility, and cleanup at the limit. The broader
+backend/platform and hostile-termination criteria above remain future validation.
+
+Local validation: 515 high-level tests passed, the Luau .NET Standard 2.1 build
+passed, and an original-binary compatibility probe passed. Validation uses macOS
+arm64 and an isolated .NET 10 copy (the installed SDK)
+with repository target frameworks unchanged. Native failure tests run under a
+subprocess timeout. Cross-platform native binaries must be rebuilt by the native
+workflow before interruption or allocator budgets are available on those platforms.
+Separate VMs and external process limits remain useful for strict tenant isolation.

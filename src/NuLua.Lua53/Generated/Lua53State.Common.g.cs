@@ -10,7 +10,7 @@ using NuLua.Interop.Lua53;
 
 namespace NuLua.Lua53;
 
-public sealed unsafe partial class Lua53State : ILuaState<Lua53State>, ILuaDebug<Lua53State>, ILuaGarbageCollection
+public sealed unsafe partial class Lua53State : ILuaState<Lua53State>, ILuaDebug<Lua53State>, ILuaGarbageCollection, ILuaMemoryControl
 {
     static readonly ConcurrentDictionary<nint, Lua53State> ptrToState = new();
 
@@ -443,6 +443,17 @@ public sealed unsafe partial class Lua53State : ILuaState<Lua53State>, ILuaDebug
 
     public ILuaDebug<Lua53State> Debug => this;
     ILuaDebug ILuaState.Debug => this;
+    public ILuaMemoryControl Memory => this;
+    long ILuaMemoryControl.UsedBytes => GarbageCollection.GetByteCount();
+    bool ILuaMemoryControl.SupportsLimit => false;
+    long ILuaMemoryControl.SetLimit(long bytes)
+    {
+        CheckDisposed();
+        if (bytes < 0)
+            throw new ArgumentOutOfRangeException(nameof(bytes));
+        throw new NotSupportedException("This backend does not support allocator limits.");
+    }
+
     public ILuaGarbageCollection GarbageCollection => this;
 
     void ILuaGarbageCollection.Stop()
