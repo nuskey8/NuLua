@@ -1,6 +1,6 @@
 # Proposal: resource controls for server-side embedding
 
-Status: draft for API discussion. The signatures below are proposals; this PR does not add public APIs or runtime behavior.
+Status: implementation in progress. Sandbox initialization is implemented; memory and execution controls below remain proposals.
 
 Related issues: [sandbox initialization #19](https://github.com/nuskey8/NuLua/issues/19), [Luau interruption #21](https://github.com/nuskey8/NuLua/issues/21), and [VM memory budgets #22](https://github.com/nuskey8/NuLua/issues/22).
 
@@ -101,20 +101,26 @@ Automatic integration with `DoStringAsync` cancellation is deferred. It needs a 
 ## Luau sandbox initialization
 
 ```csharp
-// Proposed addition to LuauState:
-// void Sandbox(bool enabled);
-
 using var state = LuauState.Create();
 state.OpenLibraries();
 state.RegisterFunction("lookup", Lookup);
-state.Sandbox(true);
-
+state.Sandbox();
 using var worker = state.CreateSandboxThread();
 ```
 
-Enabling sandbox mode after initialization freezes shared libraries/globals and establishes writable local globals that read from the shared environment. Existing `CreateSandbox()` remains available for compatibility.
+`LuauState.Sandbox()` permanently freezes the main state's shared global table,
+library tables, and builtin metatables covered by Luau's `luaL_sandbox`.
+Install libraries and host functions first, then freeze, then create sandbox
+threads. Each worker has writable local globals that read from the frozen
+shared globals. Tables are frozen shallowly; this does not recursively freeze
+arbitrary host object graphs or restrict the capabilities of host functions.
 
-To follow [mlua's sandbox API](https://docs.rs/mlua/0.12.2/mlua/struct.Lua.html#method.sandbox), disabling would restore the original global environment and discard local global overrides. It would not undo arbitrary mutations or revoke references to objects already obtained by scripts. Whether reversible mode is necessary, or a one-way `Sandbox()` is preferable, is a maintainer decision. Repeated calls, calls on child states, existing sandbox threads, and cached module environments need defined behavior.
+Repeated calls are safe. Child states are rejected, and disposed states throw.
+The main state's globals remain read-only: execute scripts that assign globals
+in sandbox threads. Existing threads, previously loaded chunks, and cached
+module environments are not isolated retroactively. There is no disable mode;
+create a new VM to rebuild the shared environment. Existing `CreateSandbox()`
+retains its immediate-freeze behavior and delegates to `Sandbox()`.
 
 ## Implementation and validation sequence
 

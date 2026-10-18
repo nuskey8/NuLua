@@ -37,8 +37,24 @@ public sealed unsafe partial class LuauState
     public static LuauState CreateSandbox()
     {
         var state = Create();
-        NativeMethods.luaL_sandbox(state.ptr);
+        state.Sandbox();
         return state;
+    }
+
+    /// <summary>
+    /// Freezes this VM's shared globals and libraries after host initialization.
+    /// Run scripts in <see cref="CreateSandboxThread"/> to give each worker writable,
+    /// isolated globals. This operation is permanent and may only be called on the main state.
+    /// Existing threads and loaded chunks are not isolated retroactively.
+    /// </summary>
+    public void Sandbox()
+    {
+        CheckDisposed();
+        if (NativeMethods.lua_mainthread(ptr) != ptr)
+        {
+            throw new InvalidOperationException("Only the main state can freeze shared globals.");
+        }
+        NativeMethods.luaL_sandbox(ptr);
     }
 
     public void NewSandboxThread()
