@@ -29,7 +29,7 @@ public sealed unsafe partial class Lua52State
         {
             nuint len;
             var message = NativeMethods.luaL_tolstring(ptr, -1, &len);
-            var messageStr = new string((sbyte*)message, 0, (int)len);
+            var messageStr = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(message, (int)len));
             throw new LuaException((uint)code, messageStr);
         }
     }
@@ -308,7 +308,7 @@ public sealed unsafe partial class Lua52State
         CheckDisposed();
         nuint len;
         var strPtr = NativeMethods.lua_tolstring(ptr, index, &len);
-        return new string((sbyte*)strPtr, 0, (int)len);
+        return Encoding.UTF8.GetString(new ReadOnlySpan<byte>(strPtr, (int)len));
     }
 
     public void GetGlobal(ReadOnlySpan<char> name)
@@ -645,7 +645,7 @@ public sealed unsafe partial class Lua52State
         {
             nuint len;
             var message = NativeMethods.luaL_tolstring(ptr, -1, &len);
-            var messageStr = new string((sbyte*)message, 0, (int)len);
+            var messageStr = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(message, (int)len));
             throw new LuaException((uint)status, messageStr);
         }
         return status;
