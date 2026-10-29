@@ -85,7 +85,7 @@ public static class LuaAsyncStateExtensions
         {
             co.Push(span[i]);
         }
-        return RunAndCollectAsync(co, args.Length, cancellationToken);
+        return RunAndCollectAsync(state, co, args.Length, cancellationToken);
     }
 
     static async ValueTask RunAndPushAsync(
@@ -128,6 +128,7 @@ public static class LuaAsyncStateExtensions
     }
 
     static async ValueTask<LuaValue[]> RunAndCollectAsync(
+        ILuaState state,
         ILuaState co,
         int initialArgCount,
         CancellationToken cancellationToken
@@ -141,13 +142,21 @@ public static class LuaAsyncStateExtensions
             {
                 return [];
             }
-            var results = new LuaValue[top];
-            for (int i = 0; i < top; i++)
+            var baseTop = state.GetTop();
+            co.XMove(state, top);
+            try
             {
-                results[i] = co.ToLuaValue(i + 1);
+                var results = new LuaValue[top];
+                for (int i = 0; i < top; i++)
+                {
+                    results[i] = state.ToLuaValue(baseTop + i + 1);
+                }
+                return results;
             }
-            co.SetTop(0);
-            return results;
+            finally
+            {
+                state.SetTop(baseTop);
+            }
         }
         finally
         {
