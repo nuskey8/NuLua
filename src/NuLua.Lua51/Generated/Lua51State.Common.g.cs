@@ -87,12 +87,10 @@ public sealed unsafe partial class Lua51State : ILuaState<Lua51State>, ILuaDebug
 
     public void Dispose()
     {
-        foreach (var childState in childStates)
+        while (childStates.Count > 0)
         {
-            childState.Dispose();
+            childStates[childStates.Count - 1].Dispose();
         }
-
-        childStates.Clear();
 
         if (ptr != null)
         {
@@ -106,6 +104,7 @@ public sealed unsafe partial class Lua51State : ILuaState<Lua51State>, ILuaDebug
             {
                 from.Unref(reference);
                 ptrToState.TryRemove((nint)ptr, out _);
+                from.childStates.Remove(this);
             }
             ptr = null;
         }
