@@ -3,7 +3,7 @@
     <UseArtifactsOutput>true</UseArtifactsOutput>
 
     <!-- NuGet Packaging -->
-    <PackageVersion>0.1.0</PackageVersion>
+    <PackageVersion>0.2.0</PackageVersion>
     <Authors>nuskey</Authors>
     <Copyright>© Yusuke Nakada</Copyright>
     <PackageProjectUrl>https://github.com/nuskey8/NuLua</PackageProjectUrl>

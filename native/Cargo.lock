@@ -117,7 +117,7 @@ checksum = "953f07c43838f8e6f9758cab68bf5bed85465e7587ebe0b823f1bcd81978ad3a"
 
 [[package]]
 name = "lua51"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "lua52"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -133,7 +133,7 @@ dependencies = [
 
 [[package]]
 name = "lua53"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -141,7 +141,7 @@ dependencies = [
 
 [[package]]
 name = "lua54"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -149,7 +149,7 @@ dependencies = [
 
 [[package]]
 name = "lua55"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -157,7 +157,7 @@ dependencies = [
 
 [[package]]
 name = "luajit"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
@@ -165,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "luau"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bindgen",
  "csbindgen",
